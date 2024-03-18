@@ -1,1 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
 
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SynQR</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Nerko+One&family=Poppins&display=swap');
+
+        @keyframes rainbow {
+            0% {
+                background: #ff5a39;
+            }
+
+            14% {
+                background: #ae0c88;
+            }
+
+            29% {
+                background: #0362c8;
+            }
+
+            43% {
+                background: #0362c8;
+            }
+
+            58% {
+                background: #4089d7;
+            }
+
+            72% {
+                background: #36d12b;
+            }
+
+            87% {
+                background: #f5f531;
+            }
+
+            100% {
+                background: #ffac2f;
+            }
+        }
+
+        body {
+            padding: 0;
+            margin: 0;
+            background-color: #c83a03;
+            text-align: center;
+            animation: rainbow 30s linear 0s infinite normal none;
+            padding-bottom: 120px;
+        }
+
+        #qrcode {
+            padding: 15px;
+            background-color: white;
+            width: fit-content;
+            margin-left: auto;
+            margin-right: auto;
+            cursor: none;
+            border-radius: 15px;
+        }
+
+        #code {
+            width: 150px;
+            margin-top: 20px;
+            text-align: center;
+            border: solid 2px white;
+            border-radius: 7px;
+            padding-left: 12px;
+            padding-right: 12px;
+            transition: transform .1s linear;
+            text-transform: uppercase;
+            background-color: #fff0;
+            color: white;
+            font-size: 1.9em;
+            letter-spacing: 0.1em;
+            font-weight: 200;
+            filter: drop-shadow(0.35rem 0.35rem 0.4rem rgba(0, 0, 0, 0.5));
+        }
+
+        #code:hover {
+            transform: scale(1.6);
+        }
+
+        #codetainer {
+            cursor: pointer;
+            position: absolute;
+            top: 25%;
+            left: 50%;
+            width: fit-content;
+            transform: translateX(-50%);
+            z-index: 69;
+        }
+
+        .active {
+            opacity: 1 !important;
+        }
+
+        #scan {
+            position: absolute;
+            left: -28%;
+            transform: rotate(-45deg);
+            top: -55px;
+        }
+
+        #move {
+            position: absolute;
+            right: -28%;
+            transform: rotate(45deg);
+            top: -55px;
+        }
+
+        h1 {
+            user-select: none;
+            pointer-events: none;
+            font-family: 'Nerko One', cursive;
+            color: white;
+            font-size: 8vh;
+            width: fit-content;
+            margin-left: auto;
+            margin-right: auto;
+
+        }
+
+        h2 {
+            color: white;
+            font-size: 1.9em;
+            letter-spacing: 0.1em;
+            font-weight: 200;
+            filter: drop-shadow(0.35rem 0.35rem 0.4rem rgba(0, 0, 0, 0.5));
+        }
+
+        h3 {
+            color: white;
+            font-family: 'Poppins', sans-serif;
+        }
+
+        .background {
+            background-color: rgba(0, 0, 0, 0.563);
+            padding: 15px;
+            border-radius: 15px;
+            min-width: fit-content;
+        }
+
+        #synctext {
+            color: black;
+            font-size: 1.9em;
+            letter-spacing: 0.1em;
+            font-weight: 200;
+            filter: drop-shadow(0.35rem 0.35rem 0.4rem rgba(0, 0, 0, 0.5));
+            text-align: center;
+            background-color: #0000;
+            border: 0px;
+        }
+
+        .btn {
+            display: block;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        @media only screen and (max-width: 700px) {
+            #codetainer {
+                transform: scale(0.6);
+                cursor: pointer;
+                position: initial;
+                top: 25%;
+                left: auto;
+                width: fit-content;
+                z-index: 69;
+                margin-left: auto;
+                margin-right: auto;
+                margin-top: 2em;
+            }
+        }
+
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <textarea name="synctext" id="synctext" onkeyup="syncText(this.value);"
+            onchange="syncText(this.value);" oninput='this.style.height = "";this.style.height = this.scrollHeight + "px"'>share this text</textarea>
+        <button class="btn" data-clipboard-target="#foo">copy text</button>
+        <!--button  data-clipboard-target="#foo">add file</button-->
+    </div>
+    <div id="codetainer" onclick="hideTooltips();document.getElementById('code').focus();">
+        <h3 id="scan">scan me!<br />&darr;</h3>
+        <h3 id="move">move me!<br />&darr;</h3>
+        <div id="qrcode"></div>
+        <input type="text" id="code" onchange="customCode();" onfocus="this.select();" minlength="1"
+            maxlength="10"></input>
+        <h2 id="guide">scan to connect</h2>
+    </div>
+    <script src="/js/qrcode.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/clipboard@2.0.11/dist/clipboard.min.js"></script>
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    <script>
+        let url = location.protocol + location.host;
+        var room = window.location.href.substr(window.location.href.lastIndexOf('/') + 1);
+        let synctext = document.getElementById('synctext');
+        var qrsize = 1.0;
+        new ClipboardJS('.btn');
+
+        var socket;
+        window.addEventListener('load', () => {
+            refreshQR();
+            refreshSocket();
+        })
+
+        function refreshQR() {
+            document.getElementById("qrcode").innerHTML = '';
+            new QRCode(document.getElementById("qrcode"), {
+                text: url + '/' + room,
+                width: 200,
+                height: 200
+            });
+            document.getElementById('qrcode').style.backgroundImage = 'none';
+            document.getElementById('qrcode').title = '';
+            document.getElementById('code').value = room;
+        }
+        function hideTooltips() {
+            document.getElementById('scan').style.visibility = 'hidden';
+            document.getElementById('move').style.visibility = 'hidden';
+        }
+
+        function refreshSocket() {
+            if (socket) { socket.close(); }
+            socket = io({
+                query: {
+                    room: room,
+                },
+            });
+            socket.on('synctext', (text) => {
+                synctext.value = text;
+                synctext.style.height = "";
+                synctext.style.height = synctext.scrollHeight + "px";
+            })
+            socket.on('new-join', () => {
+                syncText(synctext.value);
+            })
+        }
+        function customCode() {
+            room = document.getElementById('code').value.toLowerCase();
+            refreshQR();
+            refreshSocket();
+        }
+        function syncText(txt) {
+            console.log(txt)
+            socket.emit("synctext", txt);
+        }
+        let qr = document.getElementById('codetainer');
+
+        qr.addEventListener("wheel", (evt) => {
+            if((evt.deltaY > 0 && qrsize > 0.3) || (evt.deltaY < 0 && qrsize < 4.0) ) {
+                qrsize += (evt.deltaY/1000)*-1;
+                qr.style.transform = `translateX(-50%) scale(${qrsize})`
+            }
+        });
+
+        function resize() {
+            let qr = document.getElementById('codetainer');
+            if (qrScale < 3) { qrScale += 0.2 } else { qrScale = 1.0 }
+            qr.style.transform = `translateX(-50%) scale(${qrScale})`;
+        }
+
+    </script>
+
+    <script src="/js/draggable.js"></script>
+    <script>dragElement(document.getElementById('codetainer'))</script>
+</body>
+
+</html>
