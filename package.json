@@ -1,0 +1,16 @@
+{
+  "dependencies": {
+    "@sap_oss/node-socketio-stream": "^1.0.7",
+    "express": "^4.18.2",
+    "socket.io": "^4.7.2"
+  },
+  "name": "synqr",
+  "version": "1.0.0",
+  "description": "Quick sync of text and files between multiple devices, connected using QR codes",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "AEPSchmitt",
+  "license": "ISC"
+}
